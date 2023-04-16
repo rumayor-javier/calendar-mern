@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { addHours, differenceInSeconds } from "date-fns";
 import Modal from "react-modal";
 
@@ -7,6 +7,8 @@ import "react-datepicker/dist/react-datepicker.css";
 
 import Swal from "sweetalert2";
 import "sweetalert2/dist/sweetalert2.min.css";
+
+import { useCalendarStore, useUiStore } from "../../hooks";
 
 const customStyles = {
   content: {
@@ -22,20 +24,27 @@ const customStyles = {
 Modal.setAppElement("#root");
 
 export const CalendarModal = () => {
-  const [isModalOpen, setIsModalOpen] = useState(true);
+  const { isDateModalOpen, closeDateModal } = useUiStore();
+  const { setActiveEvent, activeEvent, startSavingEvent } = useCalendarStore();
   const [formSubmitted, setFormSubmitted] = useState(false);
 
   const [formValues, setFormValues] = useState({
     title: "",
     notes: "",
     start: new Date(),
-    end: addHours(new Date(), 2),
+    end: addHours(new Date(), 1),
   });
 
   const titleClass = useMemo(() => {
     if (!formSubmitted) return "";
     return formValues.title.trim().length > 0 ? "" : "is-invalid";
   }, [formValues.title, formSubmitted]);
+
+  useEffect(() => {
+    if (activeEvent !== null) {
+      setFormValues({ ...activeEvent });
+    }
+  }, [activeEvent]);
 
   const onInputChange = ({ target }) => {
     setFormValues({
@@ -52,10 +61,10 @@ export const CalendarModal = () => {
   };
 
   const onCloseModal = () => {
-    setIsModalOpen(false);
+    closeDateModal();
   };
 
-  const onSubmit = (e) => {
+  const onSubmit = async (e) => {
     e.preventDefault();
     setFormSubmitted(true);
     const dateDifference = differenceInSeconds(
@@ -71,11 +80,14 @@ export const CalendarModal = () => {
       return;
     }
     if (formValues.title.trim().length <= 0) return;
+
+    await startSavingEvent(formValues);
+    closeDateModal();
   };
 
   return (
     <Modal
-      isOpen={isModalOpen}
+      isOpen={isDateModalOpen}
       onRequestClose={onCloseModal}
       style={customStyles}
       className={"modal"}
